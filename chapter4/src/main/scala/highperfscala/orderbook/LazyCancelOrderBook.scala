@@ -67,16 +67,20 @@ object LazyCancelOrderBook {
           case (p, q) => findActiveOrder(q, Set.empty) match {
             case (Some(o), Some(qq), rms) => (ob.copy(
               offers = ob.offers + (o.price -> qq),
+              pendingCancelIds = ob.pendingCancelIds -- rms,
               activeIds = ob.activeIds -- rms), OrderExecuted(currentTime(),
               Execution(b.id, o.price), Execution(o.id, o.price)))
             case (Some(o), None, rms) => (ob.copy(
-              offers = ob.offers - o.price, activeIds = ob.activeIds -- rms),
+              offers = ob.offers - o.price,
+              pendingCancelIds = ob.pendingCancelIds -- rms,
+              activeIds = ob.activeIds -- rms),
               OrderExecuted(currentTime(),
                 Execution(b.id, o.price), Execution(o.id, o.price)))
             case (None, _, rms) =>
               val bs = ob.bids.getOrElse(b.price, Queue.empty).enqueue(b)
               (ob.copy(bids = ob.bids + (b.price -> bs),
                 offers = ob.offers - p,
+                pendingCancelIds = ob.pendingCancelIds -- rms,
                 activeIds = ob.activeIds -- rms + b.id),
                 LimitOrderAdded(currentTime()))
           }
@@ -110,12 +114,16 @@ object LazyCancelOrderBook {
         case true => ob.bids.headOption.fold(restLimitOrder) {
           case (p, q) => findActiveOrder(q, Set.empty) match {
             case (Some(o), Some(qq), rms) => (ob.copy(
-              bids = ob.bids + (o.price -> qq), activeIds = ob.activeIds -- rms),
+              bids = ob.bids + (o.price -> qq),
+              pendingCancelIds = ob.pendingCancelIds -- rms,
+              activeIds = ob.activeIds -- rms),
               OrderExecuted(currentTime(),
                 Execution(o.id, o.price), Execution(s.id, o.price)))
 
             case (Some(o), None, rms) => (ob.copy(
-              bids = ob.bids - o.price, activeIds = ob.activeIds -- rms),
+              bids = ob.bids - o.price,
+              pendingCancelIds = ob.pendingCancelIds -- rms,
+              activeIds = ob.activeIds -- rms),
               OrderExecuted(currentTime(),
                 Execution(o.id, o.price), Execution(s.id, o.price)))
 
@@ -123,7 +131,9 @@ object LazyCancelOrderBook {
             case (None, _, rms) =>
               val os = ob.offers.getOrElse(s.price, Queue.empty).enqueue(s)
               (ob.copy(offers = ob.offers + (s.price -> os),
-                bids = ob.bids - p, activeIds = ob.activeIds -- rms + s.id),
+                bids = ob.bids - p,
+                pendingCancelIds = ob.pendingCancelIds -- rms,
+                activeIds = ob.activeIds -- rms + s.id),
                 LimitOrderAdded(currentTime()))
           }
         }
